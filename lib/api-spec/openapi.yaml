@@ -1,0 +1,310 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: enrollments
+    description: Student enrollment operations
+  - name: admin
+    description: Admin operations (Reynold)
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /enrollments:
+    post:
+      operationId: createEnrollment
+      tags: [enrollments]
+      summary: Create a new student enrollment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEnrollmentBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+  /enrollments/{code}:
+    get:
+      operationId: getEnrollment
+      tags: [enrollments]
+      summary: Look up enrollment by code
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Enrollment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /referrers/leaderboard:
+    get:
+      operationId: getReferrerLeaderboard
+      tags: [enrollments]
+      summary: Public leaderboard of top referrers
+      responses:
+        "200":
+          description: Top referrers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReferrerEntry"
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginBody"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /admin/logout:
+    post:
+      operationId: adminLogout
+      tags: [admin]
+      summary: Admin logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+  /admin/me:
+    get:
+      operationId: adminMe
+      tags: [admin]
+      summary: Check admin session
+      responses:
+        "200":
+          description: Session info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+  /admin/enrollments:
+    get:
+      operationId: listEnrollments
+      tags: [admin]
+      summary: List all enrollments (admin)
+      responses:
+        "200":
+          description: List of enrollments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Enrollment"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /admin/enrollments/{id}/confirm:
+    post:
+      operationId: confirmEnrollment
+      tags: [admin]
+      summary: Confirm payment and generate AI syllabus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Confirmed enrollment with generated syllabus
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        whatsapp:
+          type: string
+        tier:
+          type: string
+          enum: [beginner, pro]
+        language:
+          type: string
+        status:
+          type: string
+          enum: [pending, confirmed]
+        syllabus:
+          type: string
+          nullable: true
+        plan:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        referredBy:
+          type: string
+          nullable: true
+        referrerName:
+          type: string
+          nullable: true
+        referrerWhatsapp:
+          type: string
+          nullable: true
+        discount:
+          type: integer
+      required:
+        - id
+        - code
+        - name
+        - email
+        - whatsapp
+        - tier
+        - language
+        - status
+        - discount
+        - createdAt
+    CreateEnrollmentBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          minLength: 3
+        whatsapp:
+          type: string
+          minLength: 5
+        tier:
+          type: string
+          enum: [beginner, pro]
+        language:
+          type: string
+          minLength: 1
+        referredBy:
+          type: string
+          nullable: true
+      required:
+        - name
+        - email
+        - whatsapp
+        - tier
+        - language
+    ReferrerEntry:
+      type: object
+      properties:
+        firstName:
+          type: string
+        code:
+          type: string
+        count:
+          type: integer
+      required:
+        - firstName
+        - code
+        - count
+    AdminLoginBody:
+      type: object
+      properties:
+        password:
+          type: string
+      required:
+        - password
+    AdminSession:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+      required:
+        - authenticated
